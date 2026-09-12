@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ' *)",
+      "Bash(MAX_PER_TX_USD=0.005 npx tsx src/agent.ts --tasks 2)",
+      "Bash(python -)",
+      "PowerShell(Get-NetTCPConnection -LocalPort 4021 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }; Start-Sleep -Milliseconds 800; \"port cleared\")",
+      "PowerShell(Get-NetTCPConnection -LocalPort 4021 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }; Start-Sleep -Milliseconds 500; \"test server stopped\")",
+      "Bash(MAX_PER_TX_USD=0.01 npx tsx src/agent.ts --tasks 12)",
+      "Bash(sed 's/tx=0x\\\\\\(.\\\\{10\\\\}\\\\\\).*/tx=0x\\\\1…/')",
+      "Read(//tmp/**)",
+      "Bash(MAX_PER_TX_USD=0.01 npx tsx probe-tmp.ts)",
+      "Bash(echo \"typecheck exit=$?\")",
+      "Bash(rm -f probe-tmp.ts)",
+      "PowerShell(Get-NetTCPConnection -LocalPort 4021 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }; Start-Sleep -Milliseconds 700; \"restarting\")",
+      "PowerShell(Get-NetTCPConnection -LocalPort 4021 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }; Start-Sleep -Milliseconds 600; $c = Get-NetTCPConnection -LocalPort 4021 -State Listen -ErrorAction SilentlyContinue; if \\($c\\) { \"still running\" } else { \"test server stopped, port free\" })",
+      "PowerShell(Get-NetTCPConnection -LocalPort 4021 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }; Start-Sleep -Milliseconds 600; \"test server stopped\")",
+      "Bash(xargs cat)",
+      "Bash(grep -n \"pricePerCall\\\\|price-in\\\\|replace\\(/\\\\^\" public/dashboard.html)",
+      "Bash(curl -s http://localhost:4021/api/agent)",
+      "Bash(node -e \"let s='';process.stdin.on\\('data',d=>s+=d\\).on\\('end',\\(\\)=>{const j=JSON.parse\\(s\\);console.log\\('pricePerCall:',j.pricePerCall,'| limitMode:',j.limitMode\\);}\\)\")",
+      "Bash(node scripts/validate_palette.js \"#4f46e5\" --mode light)",
+      "Bash(node scripts/validate_palette.js \"#818cf8\" --mode dark --surface \"#16191f\")",
+      "Bash(cp C:/Users/shash/AppData/Local/Temp/claude/bundled-skills/2.1.269/860857c55ec22f538f3c8e7768db005c/dataviz/scripts/validate_palette.js C:/Users/shash/AppData/Local/Temp/claude/c--Users-shash-Desktop-ai-payment/fe45b0cf-7a70-4a9f-ae1c-b28093ed292a/scratchpad/validate_palette.mjs)",
+      "Bash(node C:/Users/shash/AppData/Local/Temp/claude/c--Users-shash-Desktop-ai-payment/fe45b0cf-7a70-4a9f-ae1c-b28093ed292a/scratchpad/validate_palette.mjs '#4f46e5' --mode light --surface '#ffffff')",
+      "Bash(cp C:/Users/shash/AppData/Local/Temp/claude/bundled-skills/2.1.269/860857c55ec22f538f3c8e7768db005c/dataviz/scripts/validate_palette.js C:/Users/shash/AppData/Local/Temp/claude/c--Users-shash-Desktop-ai-payment/fe45b0cf-7a70-4a9f-ae1c-b28093ed292a/scratchpad/vp/validate_palette.js)",
+      "Bash(node C:/Users/shash/AppData/Local/Temp/claude/c--Users-shash-Desktop-ai-payment/fe45b0cf-7a70-4a9f-ae1c-b28093ed292a/scratchpad/vp/validate_palette.js '#4f46e5' --mode light --surface '#ffffff')",
+      "Bash(npm install *)",
+      "Bash(echo \"install exit=$?\")",
+      "Bash(node -e \"console.log\\('sdk version:', require\\('./node_modules/@anthropic-ai/sdk/package.json'\\).version\\)\")"
+    ]
+  }
+}

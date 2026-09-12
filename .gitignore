@@ -1,0 +1,25 @@
+# Secrets - .env holds AGENT_PRIVATE_KEY
+.env
+.env.*
+!.env.example
+
+# Durable spend ledger (per-machine state, not source)
+.spend-ledger.json
+.spend-ledger.mock.json
+.purchases.json
+.purchases.mock.json
+.purchases.json.lock
+.purchases.*.tmp
+.settings.json
+.settings.mock.json
+.settings.*.tmp
+.spend-ledger.lock
+.spend-ledger.json.lock
+.spend-ledger.*.tmp
+
+node_modules/
+dist/
+*.log
+
+# Personal Claude Code overrides (paths/allowlist specific to this machine)
+.claude/settings.local.json

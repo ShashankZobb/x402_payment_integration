@@ -1,0 +1,1361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>x402 Pay-per-Call</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --bg-2: #eaecf1;
+    --surface: #ffffff;
+    --surface-2: #fbfbfd;
+    --border: #e4e6eb;
+    --border-strong: #d3d6dd;
+    --text: #14161a;
+    --text-dim: #6b7280;
+    --text-faint: #9ca3af;
+    --accent: #4f46e5;
+    --accent-2: #8b5cf6;
+    --accent-soft: #eef2ff;
+    --accent-text: #4338ca;
+    --good: #0f9960;
+    --good-soft: #e7f6ee;
+    --warn: #b45309;
+    --warn-soft: #fef3e2;
+    --bad: #dc2626;
+    --bad-soft: #fdecec;
+    --bar: #4f46e5;
+    --grid: #e8eaee;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(16,18,24,.05), 0 8px 24px -12px rgba(16,18,24,.18);
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  /* Standard (non-nested) form so this works in every browser. The bar fill is a
+     chart token with its own dark step, chosen for the dark surface rather than
+     flipped from the light one. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b0d11; --bg-2: #191d24; --surface: #16191f; --surface-2: #1b1f26;
+      --border: #262b33; --border-strong: #333944;
+      --text: #eef0f4; --text-dim: #9aa2b1; --text-faint: #6b7380;
+      --accent: #818cf8; --accent-2: #a78bfa; --accent-soft: #1e2139; --accent-text: #a5b4fc;
+      --good: #34d399; --good-soft: #10281f;
+      --warn: #fbbf24; --warn-soft: #2a2113;
+      --bad: #f87171; --bad-soft: #2c1618;
+      --bar: #7c6cf5; --grid: #232830;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+    }
+  }
+  [data-theme="dark"] {
+    --bg: #0b0d11; --bg-2: #191d24; --surface: #16191f; --surface-2: #1b1f26;
+    --border: #262b33; --border-strong: #333944;
+    --text: #eef0f4; --text-dim: #9aa2b1; --text-faint: #6b7380;
+    --accent: #818cf8; --accent-2: #a78bfa; --accent-soft: #1e2139; --accent-text: #a5b4fc;
+    --good: #34d399; --good-soft: #10281f;
+    --warn: #fbbf24; --warn-soft: #2a2113;
+    --bad: #f87171; --bad-soft: #2c1618;
+    --bar: #7c6cf5; --grid: #232830;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-in {
+    max-width: 1240px; margin: 0 auto; padding: 11px 20px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; flex: none; }
+  .logo {
+    height: 32px; padding: 0 11px; border-radius: 10px;
+    background: linear-gradient(140deg, var(--accent), var(--accent-2));
+    display: grid; place-items: center; color: #fff; font-weight: 700;
+    font-size: 13.5px; letter-spacing: .02em; font-variant-numeric: tabular-nums;
+  }
+  .brand h1 { font-size: 15.5px; font-weight: 650; margin: 0; letter-spacing: -.01em; }
+
+  .tabs { display: flex; gap: 2px; padding: 3px; border-radius: 11px; background: var(--bg-2); flex: none; }
+  .tab {
+    appearance: none; border: 0; background: transparent; color: var(--text-dim);
+    font: inherit; font-size: 13.5px; font-weight: 550; padding: 7px 16px;
+    border-radius: 9px; cursor: pointer; transition: .16s; white-space: nowrap;
+  }
+  .tab:hover { color: var(--text); }
+  .tab[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+  .spacer { flex: 1; }
+  .chiptop {
+    display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 550;
+    padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text-dim); flex: none;
+  }
+  .chiptop.mock { display: none; background: var(--warn-soft); border-color: transparent; color: var(--warn); font-weight: 650; }
+  .chiptop.mock.on { display: inline-flex; }
+  .chiptop b { color: var(--text); font-weight: 650; font-variant-numeric: tabular-nums; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); flex: none; }
+
+  /* ---------- layout ---------- */
+  .page { max-width: 1240px; margin: 0 auto; padding-block: 22px 64px; padding-left: 20px; padding-right: 20px; }
+  .panel[hidden] { display: none; }
+  .cols { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 18px; align-items: start; }
+  /* One card on its own reads as a deliberate column, not the surviving half of
+     a two-column grid. */
+  .solo { max-width: 620px; }
+  .stack { display: grid; gap: 18px; min-width: 0; }
+  .cols > * { min-width: 0; }
+  @media (max-width: 940px) { .cols { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); max-width: 100%; overflow: hidden;
+  }
+  .card-head { padding: 16px 18px 0; }
+  .card-head.split { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .card-body { padding: 18px; }
+  .card h2 {
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-faint); margin: 0;
+  }
+  .sub { font-size: 12.5px; color: var(--text-dim); margin: 3px 0 0; }
+
+  /* ---------- controls ---------- */
+  button {
+    font: inherit; font-weight: 550; cursor: pointer; border-radius: 10px;
+    border: 1px solid var(--border-strong); background: var(--surface);
+    color: var(--text); padding: 9px 14px; transition: .15s;
+  }
+  button:hover:not(:disabled) { background: var(--surface-2); border-color: var(--text-faint); }
+  button:disabled { opacity: .55; cursor: not-allowed; }
+  button.primary {
+    background: linear-gradient(140deg, var(--accent), var(--accent-2));
+    border-color: transparent; color: #fff; box-shadow: 0 1px 2px rgba(79,70,229,.25);
+  }
+  button.primary:hover:not(:disabled) { filter: brightness(1.08); border-color: transparent; }
+  button.ghost { background: transparent; border-color: var(--border); color: var(--text-dim); }
+  .btn-row { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  .btn-row button { flex: 1; min-width: 120px; }
+
+  label { display: block; font-size: 12.5px; font-weight: 550; margin-bottom: 6px; }
+  label .hint { font-weight: 400; color: var(--text-faint); }
+  .field { margin-bottom: 14px; }
+  input, select, textarea {
+    width: 100%; font: inherit; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text);
+    transition: .15s;
+  }
+  textarea { min-height: 70px; resize: vertical; }
+  input:focus, select:focus, textarea:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft); background: var(--surface);
+  }
+  input.invalid { border-color: var(--bad); }
+  input.invalid:focus { box-shadow: 0 0 0 3px var(--bad-soft); }
+  input[readonly] { color: var(--text-dim); cursor: default; }
+  .err { display: none; font-size: 12px; color: var(--bad); margin: 0 0 10px; }
+  .err.on { display: block; }
+  .two { display: grid; grid-template-columns: 1fr 150px; gap: 12px; }
+  @media (max-width: 520px) { .two { grid-template-columns: 1fr; } }
+  .send { width: 100%; padding: 12px; font-size: 15px; margin-top: 4px; }
+
+  /* ---------- wallet ---------- */
+  .balance { display: flex; align-items: baseline; gap: 9px; margin: 12px 0 4px; }
+  .balance .amt { font-size: 40px; font-weight: 660; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .balance .cur { font-size: 14px; font-weight: 600; color: var(--text-dim); }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 550;
+    padding: 4px 10px; border-radius: 999px; border: 1px solid transparent;
+  }
+  .pill.ok { background: var(--good-soft); color: var(--good); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pill.bad { background: var(--bad-soft); color: var(--bad); }
+  .meta { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 14px; display: grid; gap: 11px; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; }
+  .row .k { color: var(--text-dim); }
+  .row .v { font-weight: 550; font-variant-numeric: tabular-nums; }
+  .addr {
+    font-family: var(--mono); font-size: 12px; color: var(--text-dim);
+    background: var(--surface-2); border: 1px solid var(--border);
+    padding: 3px 8px; border-radius: 7px; cursor: pointer; transition: .15s;
+  }
+  .addr:hover { color: var(--text); border-color: var(--border-strong); }
+
+  /* ---------- marketplace ---------- */
+  .tools { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .tools input { flex: 1 1 170px; }
+  .tools input.narrow { flex: 0 0 100px; }
+  .tools select { flex: 0 0 134px; font-size: 13px; padding: 9px 10px; }
+  .tools button { flex: none; }
+  /* Square icon buttons. They stretch to the input's height via the flex row's
+     default align-items: stretch, so the row stays on one baseline. */
+  .iconbtn { width: 44px; padding: 0; display: grid; place-items: center; }
+  .iconbtn svg { display: block; }
+  .iconbtn .spin { margin-right: 0; }
+  .grid-prod { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+  .pcard {
+    display: flex; flex-direction: column; gap: 8px; padding: 13px; min-width: 0;
+    border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2);
+    transition: border-color .15s, transform .15s;
+  }
+  .pcard:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .pcard-top { display: flex; gap: 10px; align-items: flex-start; }
+  .pthumb {
+    width: 42px; height: 42px; border-radius: 10px; flex: none; object-fit: cover;
+    background: var(--surface); border: 1px solid var(--border); display: block;
+  }
+  .pmono {
+    width: 42px; height: 42px; border-radius: 10px; flex: none;
+    display: grid; place-items: center; font-weight: 700; font-size: 16px; color: #fff;
+  }
+  .pcard-id { min-width: 0; flex: 1; }
+  .pcard-name {
+    font-weight: 600; font-size: 13.5px; line-height: 1.3;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .pcard-provider { font-size: 11.5px; color: var(--text-faint); margin-top: 2px; overflow-wrap: anywhere; }
+  .pcard-desc {
+    font-size: 12px; color: var(--text-dim); line-height: 1.5; margin: 0;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .chips { display: flex; gap: 5px; flex-wrap: wrap; }
+  .chip {
+    font-size: 10.5px; padding: 2px 7px; border-radius: 6px;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text-dim);
+  }
+  .net-badge {
+    font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); flex: none;
+  }
+  .pcard-foot { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 4px; }
+  .pcard-price { font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .pcard-foot button { margin-top: 0; padding: 7px 14px; margin-left: auto; flex: none; }
+  .pcard-note { font-size: 11px; min-height: 1em; margin: 0; }
+  .pcard-note.bad { color: var(--bad); }
+  .pcard-note.good { color: var(--good); }
+
+  /* ---------- assistant results ---------- */
+  .match { border-top: 1px solid var(--border); padding: 12px 0; }
+  .match:first-child { border-top: 0; }
+  .match-head { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  .match-name { font-weight: 600; font-size: 13.5px; }
+  .tag2 {
+    font-size: 10.5px; font-weight: 650; padding: 2px 8px; border-radius: 999px;
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .tag2.auto { background: var(--good-soft); color: var(--good); }
+  .tag2.sug { background: var(--accent-soft); color: var(--accent-text); }
+  .tag2.no { background: var(--bad-soft); color: var(--bad); }
+  .match-why { font-size: 12.5px; color: var(--text-dim); margin: 5px 0 0; line-height: 1.5; }
+  .match-act { display: flex; align-items: center; gap: 10px; margin-top: 9px; flex-wrap: wrap; }
+  .match-act button { margin-top: 0; padding: 7px 15px; }
+  .match-params { font-family: var(--mono); font-size: 11px; color: var(--text-faint); }
+  .shop-note { font-size: 12px; color: var(--text-dim); margin: 12px 0 0; }
+  .results { margin-top: 6px; }
+
+  /* The assistant's controls read as one composer row rather than three
+     full-width blocks stretched across 1200px. */
+  .composer { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+  .composer .field { margin-bottom: 0; flex: 0 0 150px; }
+  .composer .grow { flex: 1 1 auto; }
+  .composer button { flex: none; padding: 10px 22px; }
+  .limitnote { font-size: 12px; color: var(--text-dim); margin: 10px 0 0; min-height: 1em; }
+  .limitnote.ok { color: var(--good); }
+  .limitnote.bad { color: var(--bad); }
+  .linkbtn {
+    background: none; border: 0; padding: 0; margin: 0; font: inherit; font-size: 12px;
+    color: var(--accent-text); text-decoration: underline; cursor: pointer;
+  }
+  .linkbtn:hover { background: none; border: 0; }
+
+  /* ---------- timeline ---------- */
+  .flow { margin-top: 20px; display: grid; }
+  .flow.empty { display: none; }
+  .stepline { display: grid; grid-template-columns: 26px 1fr; gap: 12px; }
+  .rail { display: flex; flex-direction: column; align-items: center; }
+  .bead {
+    width: 22px; height: 22px; border-radius: 50%; flex: none; margin-top: 2px;
+    border: 2px solid var(--border-strong); background: var(--surface);
+    display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--text-faint);
+  }
+  .bead.run { border-color: var(--accent); color: var(--accent); animation: pulse 1.1s ease-in-out infinite; }
+  .bead.ok { border-color: var(--good); background: var(--good); color: #fff; }
+  .bead.no { border-color: var(--bad); background: var(--bad); color: #fff; }
+  .bead.wait { border-color: var(--warn); color: var(--warn); }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 var(--accent-soft); } 50% { box-shadow: 0 0 0 5px var(--accent-soft); } }
+  .stem { width: 2px; flex: 1; min-height: 14px; background: var(--border); margin: 3px 0; }
+  .stepbody { padding-bottom: 14px; }
+  .stepbody .t { font-size: 13.5px; font-weight: 580; }
+  .stepbody .d { font-size: 12.5px; color: var(--text-dim); margin-top: 1px; overflow-wrap: anywhere; }
+  .stepbody .d.err { color: var(--bad); }
+  .stepline:last-child .stem { display: none; }
+  .stepline:last-child .stepbody { padding-bottom: 0; }
+  a.tx { color: var(--accent-text); text-decoration: none; font-family: var(--mono); font-size: 11.5px; }
+  a.tx:hover { text-decoration: underline; }
+
+  /* ---------- library (purchased goods) ---------- */
+  /* A purchase renders as the same card the marketplace sold, built from the
+     snapshot stored at the moment of sale — not from a fresh registry lookup. */
+  .pcard.owned { border-color: var(--border); }
+  .pcard.owned:hover { border-color: var(--good); }
+  .owned-foot {
+    display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 8px;
+    border-top: 1px solid var(--border); flex-wrap: wrap;
+  }
+  .owned-paid { font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; color: var(--good); }
+  .owned-when { font-size: 11.5px; color: var(--text-faint); }
+  .owned-foot .push { margin-left: auto; }
+  .tiny {
+    font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 7px;
+    border: 1px solid var(--border); background: transparent; color: var(--text-dim);
+  }
+  .pdata {
+    margin: 8px 0 0; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 9px; padding: 10px; overflow: auto; font-family: var(--mono);
+    font-size: 11px; line-height: 1.5; color: var(--text-dim); max-height: 260px;
+  }
+
+  /* ---------- payments table ---------- */
+  .histhead, .hitem { display: flex; align-items: center; gap: 8px; padding: 8px 0; font-size: 13px; }
+  .histhead {
+    font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--text-faint); border-bottom: 1px solid var(--border-strong); padding-bottom: 6px;
+  }
+  .histhead.hide { display: none; }
+  .hitem { border-bottom: 1px solid var(--border); }
+  .hitem:last-child { border-bottom: 0; }
+  .histhead .c-amt, .hitem .amt { width: 54px; flex: none; }
+  .hitem .amt { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .histhead .c-task, .hitem .task { flex: 1 1 0; min-width: 0; overflow: hidden; }
+  .hitem .task { color: var(--text-dim); text-overflow: ellipsis; white-space: nowrap; }
+  .histhead .c-tx, .hitem .txcell { width: 86px; flex: none; }
+  .hitem .txcell { color: var(--text-faint); font-family: var(--mono); font-size: 11.5px; }
+  .histhead .c-when, .hitem .when { width: 62px; flex: none; text-align: right; }
+  .hitem .when { color: var(--text-faint); font-size: 11.5px; }
+
+  /* ---------- chart ---------- */
+  .rangebar { display: flex; gap: 4px; }
+  .rangebar button {
+    padding: 4px 10px; font-size: 12px; font-weight: 550; border-radius: 7px;
+    border: 1px solid var(--border); background: transparent; color: var(--text-dim); margin: 0;
+  }
+  .rangebar button:hover:not(:disabled) { color: var(--text); border-color: var(--border-strong); background: transparent; }
+  .rangebar button[aria-pressed="true"] { background: var(--accent-soft); border-color: transparent; color: var(--accent-text); }
+  .chartwrap { position: relative; margin-top: 10px; transition: opacity .18s; }
+  .chartwrap.stale { opacity: .45; }
+  .chartwrap svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .band { fill: transparent; cursor: default; }
+  .bar { fill: var(--bar); pointer-events: none; transition: fill .12s; }
+  .band:hover + .bar, .band:focus-visible + .bar { fill: var(--accent-text); }
+  .band:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .gridline { stroke: var(--grid); stroke-width: 1; shape-rendering: crispEdges; }
+  .axtext { fill: var(--text-faint); font-size: 10px; font-variant-numeric: tabular-nums; }
+  .peaklbl { fill: var(--text-dim); font-size: 10.5px; font-weight: 600; }
+  .tip {
+    position: absolute; pointer-events: none; opacity: 0; transform: translate(-50%, -100%);
+    background: var(--text); color: var(--surface); font-size: 12px; font-weight: 550;
+    padding: 5px 9px; border-radius: 7px; white-space: nowrap; transition: opacity .12s; z-index: 3;
+  }
+  .tip.on { opacity: 1; }
+  .emptychart { color: var(--text-faint); font-size: 13px; padding: 18px 0 6px; }
+
+  /* ---------- stats strip ---------- */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 18px; }
+  .stat .k { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-faint); }
+  .stat .v { font-size: 24px; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; margin-top: 4px; }
+
+  .muted { color: var(--text-faint); font-size: 13px; }
+  /* currentColor, so the same spinner reads on a white-on-gradient button and
+     on a plain one. */
+  .spin {
+    display: inline-block; width: 13px; height: 13px; border: 2px solid currentColor;
+    border-top-color: transparent; border-radius: 50%; animation: sp .6s linear infinite;
+    vertical-align: -2px; margin-right: 7px; opacity: .8;
+  }
+  @keyframes sp { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <div class="logo">x402</div>
+      <h1>Pay-per-Call</h1>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab" role="tab" id="tab-shop" aria-selected="true" onclick="showTab('shop')">Shop</button>
+      <button class="tab" role="tab" id="tab-library" aria-selected="false" onclick="showTab('library')">Library</button>
+      <button class="tab" role="tab" id="tab-wallet" aria-selected="false" onclick="showTab('wallet')">Wallet</button>
+      <button class="tab" role="tab" id="tab-console" aria-selected="false" onclick="showTab('console')">Console</button>
+    </div>
+    <div class="spacer"></div>
+    <span class="chiptop mock" id="mockbadge">MOCK</span>
+    <span class="chiptop"><b id="balchip-v">&mdash;</b> USDC</span>
+    <span class="chiptop"><span class="dot"></span><span id="netName">Base Sepolia</span></span>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- ==================== SHOP ==================== -->
+  <div class="panel" id="panel-shop">
+    <div class="stack">
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Assistant</h2>
+          <p class="sub" id="agent-sub">&nbsp;</p>
+        </div>
+        <div class="card-body" style="padding-top:12px">
+          <div class="field">
+            <textarea id="shop-prompt" placeholder="buy 10 Otto AI products"></textarea>
+          </div>
+          <div class="composer">
+            <div class="field">
+              <label for="shop-auto">Auto-buy under <span class="hint">USD</span></label>
+              <input id="shop-auto" placeholder="0.02" inputmode="decimal" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="shop-limit">Cap per call <span class="hint">USD</span></label>
+              <input id="shop-limit" inputmode="decimal" autocomplete="off"
+                     title="The most the agent may pay for any single call" />
+            </div>
+            <div class="grow"></div>
+            <button class="primary" id="shop-run" onclick="runShop()">Find products</button>
+          </div>
+          <p class="err" id="shop-err" role="alert" style="margin:12px 0 0"></p>
+          <p class="limitnote" id="limit-note"></p>
+          <div class="results" id="shop-results"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head split">
+          <div>
+            <h2>Marketplace</h2>
+            <p class="sub" id="shop-sub">&nbsp;</p>
+          </div>
+          <p class="sub" id="cache-age"></p>
+        </div>
+        <div class="card-body" style="padding-top:12px">
+          <div class="tools">
+            <input id="shop-q" placeholder="Search weather, news, oracle, search&hellip;" autocomplete="off" />
+            <input id="shop-max" class="narrow" placeholder="max $" inputmode="decimal" autocomplete="off" />
+            <select id="shop-sort">
+              <option value="">Featured</option>
+              <option value="price">Cheapest</option>
+              <option value="price-desc">Dearest</option>
+            </select>
+            <button class="iconbtn" onclick="refreshShop()" title="Search the catalog" aria-label="Search">
+              <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="7" cy="7" r="4.6" /><path d="M10.6 10.6 14 14" /></svg>
+            </button>
+            <button class="iconbtn" id="cache-refresh" onclick="refreshCatalog()" title="Refetch the catalog now" aria-label="Refresh catalog">
+              <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.8 8a5.8 5.8 0 1 1-1.7-4.1" /><path d="M13.9 1.8v3.7h-3.7" /></svg>
+            </button>
+          </div>
+          <div id="shop" class="grid-prod"><span class="muted">Loading listings&hellip;</span></div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ==================== LIBRARY ==================== -->
+  <div class="panel" id="panel-library" hidden>
+    <section class="card">
+      <div class="card-head split">
+        <div>
+          <h2>Library</h2>
+          <p class="sub" id="buys-sub">&nbsp;</p>
+        </div>
+        <div class="tools" style="margin:0;flex-wrap:nowrap">
+          <input id="buys-q" placeholder="Filter what you own&hellip;" autocomplete="off" style="flex:0 0 230px" />
+        </div>
+      </div>
+      <div class="card-body" style="padding-top:14px">
+        <div id="buys" class="grid-prod"><span class="muted">Nothing bought yet.</span></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ==================== WALLET ==================== -->
+  <div class="panel" id="panel-wallet" hidden>
+    <div class="cols">
+
+      <div class="stack">
+        <section class="card">
+          <div class="card-head"><h2>Wallet</h2></div>
+          <div class="card-body" style="padding-top:6px">
+            <div class="balance">
+              <span class="amt" id="bal">&mdash;</span>
+              <span class="cur">USDC</span>
+            </div>
+            <span class="pill warn" id="status">Checking&hellip;</span>
+            <div class="meta">
+              <div class="row"><span class="k">Account</span><span class="addr" id="addr" onclick="copyAddr()">&mdash;</span></div>
+              <div class="row"><span class="k">Cap per call</span><span class="v" id="limit">&mdash;</span></div>
+              <div class="row"><span class="k">Set from</span><span class="v" id="limit-src">&mdash;</span></div>
+              <div class="row"><span class="k">Total paid</span><span class="v" id="total">&mdash;</span></div>
+            </div>
+            <div class="btn-row">
+              <button onclick="refresh()" id="refreshBtn">Refresh</button>
+              <button class="ghost" onclick="fund()">Add USDC</button>
+            </div>
+            <p class="err" id="walletMsg" role="alert" style="margin:14px 0 0"></p>
+          </div>
+        </section>
+      </div>
+
+      <div class="stack">
+        <section class="card">
+          <div class="card-body">
+            <div class="stats">
+              <div class="stat"><div class="k">Spent</div><div class="v" id="s-total">&mdash;</div></div>
+              <div class="stat"><div class="k">Payments</div><div class="v" id="s-calls">&mdash;</div></div>
+              <div class="stat"><div class="k">Items owned</div><div class="v" id="s-items">&mdash;</div></div>
+              <div class="stat"><div class="k">Avg per call</div><div class="v" id="s-avg">&mdash;</div></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head split">
+            <div><h2>Spending</h2><p class="sub" id="spend-sub">&nbsp;</p></div>
+            <div class="rangebar" id="rangebar" role="group" aria-label="Time range">
+              <button data-range="24h" onclick="setRange('24h')">24h</button>
+              <button data-range="7d" onclick="setRange('7d')">7d</button>
+              <button data-range="14d" onclick="setRange('14d')" aria-pressed="true">14d</button>
+              <button data-range="30d" onclick="setRange('30d')">30d</button>
+            </div>
+          </div>
+          <div class="card-body" style="padding-top:4px">
+            <div class="chartwrap" id="chartwrap"><div class="tip" id="tip"></div></div>
+          </div>
+        </section>
+      </div>
+
+    </div>
+
+    <!-- Full width: the table has four columns and was cramped in a 1fr half. -->
+    <section class="card" style="margin-top:18px">
+      <div class="card-head"><h2>Payments</h2></div>
+      <div class="card-body" style="padding-top:10px">
+        <div class="histhead hide" id="histhead">
+          <span class="c-amt">Amount</span><span class="c-task">Item</span>
+          <span class="c-tx">Transaction</span><span class="c-when">Time</span>
+        </div>
+        <div id="hist"><span class="muted">No payments yet.</span></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ==================== CONSOLE ==================== -->
+  <div class="panel" id="panel-console" hidden>
+    <div class="solo">
+
+      <section class="card">
+        <div class="card-head"><h2>Direct call</h2><p class="sub">One paid request, step by step.</p></div>
+        <div class="card-body" style="padding-top:12px">
+          <div class="two">
+            <div class="field">
+              <label for="task">Task</label>
+              <input id="task" value="market-signal" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="price-in">Price <span class="hint">USD</span></label>
+              <input id="price-in" placeholder="0.01" inputmode="decimal" autocomplete="off" aria-describedby="price-err" />
+            </div>
+          </div>
+          <p class="err" id="price-err" role="alert"></p>
+          <button class="primary send" id="send" onclick="send()">Send request</button>
+          <div class="flow empty" id="flow"></div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+const RUN_TOKEN = "__RUN_TOKEN__";
+let account = "", usdcAddr = "";
+let CLIENT_TIMEOUT_MS = 60000;
+let CHART_RANGE = "14d";
+
+const $ = (id) => document.getElementById(id);
+
+function money(n) {
+  if (n === null || n === undefined || !isFinite(n)) return "—";
+  if (n === 0) return "$0";
+  if (n >= 1) return "$" + n.toFixed(2);
+  if (n >= 0.01) return "$" + n.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+  return "$" + Number(n.toPrecision(2));
+}
+const short = (a) => (a && a.length > 12 ? a.slice(0, 6) + "…" + a.slice(-4) : a || "—");
+function ago(iso) {
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return Math.floor(s) + "s ago";
+  if (s < 3600) return Math.floor(s / 60) + "m ago";
+  if (s < 86400) return Math.floor(s / 3600) + "h ago";
+  return Math.floor(s / 86400) + "d ago";
+}
+function escapeHtml(s) {
+  return String(s === null || s === undefined ? "" : s)
+    .replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+// tx hashes land inside an href, so constrain them to hex rather than trusting
+// whatever came back from the ledger file.
+function txHref(tx) {
+  const clean = String(tx || "").match(/^0x[0-9a-fA-F]{64}$/);
+  return clean ? "https://sepolia.basescan.org/tx/" + clean[0] : null;
+}
+function setErr(id, msg) {
+  const el = $(id);
+  if (msg) { el.textContent = msg; el.classList.add("on"); }
+  else { el.textContent = ""; el.classList.remove("on"); }
+}
+
+// ---------- tabs ----------
+const TABS = ["shop", "library", "wallet", "console"];
+function showTab(name) {
+  for (const t of TABS) {
+    $("panel-" + t).hidden = t !== name;
+    $("tab-" + t).setAttribute("aria-selected", String(t === name));
+  }
+  try { history.replaceState(null, "", "#" + name); } catch (e) { /* file:// */ }
+  // Re-pull what that tab shows, so switching back never shows stale numbers.
+  if (name === "wallet") { refresh(); refreshChart(); }
+  if (name === "library") refreshBuys();
+  if (name === "shop" && !$("shop").querySelector(".pcard")) refreshShop();
+}
+
+// ---------- wallet ----------
+async function refresh() {
+  $("refreshBtn").disabled = true;
+  try {
+    const [bal, led] = await Promise.all([
+      fetch("/api/balance").then((r) => r.json()),
+      fetch("/api/ledger").then((r) => r.json()),
+    ]);
+    if (!bal.ok) {
+      setErr("walletMsg", bal.error || "Could not read the balance.");
+      $("status").className = "pill bad";
+      $("status").textContent = "Error";
+      return;
+    }
+    account = bal.agentAddress;
+    usdcAddr = bal.usdcAddress;
+    $("bal").textContent = Number(bal.usdc).toFixed(2);
+    $("balchip-v").textContent = Number(bal.usdc).toFixed(2);
+    $("addr").textContent = short(account);
+    const pill = $("status");
+    if (bal.funded) { pill.className = "pill ok"; pill.textContent = "Ready"; setErr("walletMsg", ""); }
+    else { pill.className = "pill warn"; pill.textContent = "Needs funding"; }
+    if (led.ok) {
+      showLimit(led.maxPerTxUsd, ENV_DEFAULT_USD == null ? null : (led.maxPerTxUsd === ENV_DEFAULT_USD ? "env" : "override"));
+      $("total").textContent = money(led.spentUsd);
+      $("s-total").textContent = money(led.spentUsd);
+      const n = (led.entries || []).length;
+      $("s-calls").textContent = String(n);
+      $("s-avg").textContent = n ? money(led.spentUsd / n) : "—";
+      renderHistory(led.entries || []);
+    }
+  } catch (e) {
+    setErr("walletMsg", "Cannot reach the server: " + e.message);
+  } finally {
+    $("refreshBtn").disabled = false;
+  }
+}
+
+/** Show the seller's own default price as the placeholder, so leaving the field
+ *  empty visibly means "charge whatever the service normally charges". */
+async function loadConfig() {
+  try {
+    const cfg = await (await fetch("/api/agent")).json();
+    const raw = cfg.pricePerCall === null || cfg.pricePerCall === undefined ? "" : String(cfg.pricePerCall);
+    const def = raw.replace(/^\$/, "");
+    if (def) $("price-in").placeholder = def;
+    if (cfg.maxPerTxUsd != null) showLimit(cfg.maxPerTxUsd, cfg.limitSource, cfg.envDefaultUsd);
+    // Say exactly what is deciding. Passing keyword matching off as the model
+    // would misrepresent what the demo is doing.
+    $("agent-sub").textContent = !cfg.mockAi
+      ? (cfg.agentModel || "Claude") + " picks which listings match, within your limits."
+      : "Keyword matching over the live catalog.";
+    // Abort a little after the server's own deadline, so a server-side timeout
+    // wins and returns a structured answer rather than the client giving up first.
+    if (cfg.requestTimeoutMs) CLIENT_TIMEOUT_MS = cfg.requestTimeoutMs + 15000;
+    if (cfg.mock) $("mockbadge").classList.add("on");
+  } catch (e) { /* defaults stay as authored */ }
+}
+
+function renderHistory(entries) {
+  const h = $("hist"), head = $("histhead");
+  if (!entries.length) {
+    head.classList.add("hide");
+    h.innerHTML = '<span class="muted">No payments yet.</span>';
+    return;
+  }
+  head.classList.remove("hide");
+  h.innerHTML = entries.slice(0, 10).map(function (e) {
+    const href = txHref(e.tx);
+    // A settlement hash links to Basescan. Mock ids are not hash-shaped, so they
+    // render as plain text rather than a dead explorer link.
+    const tx = href
+      ? '<a class="tx" href="' + href + '" target="_blank" rel="noopener">' + escapeHtml(e.tx.slice(0, 8)) + "…</a>"
+      : e.tx
+        ? '<span title="' + escapeHtml(e.tx) + '">' + escapeHtml(String(e.tx).slice(0, 10)) + "…</span>"
+        : "—";
+    return '<div class="hitem"><span class="amt">' + money(e.usd) + "</span>"
+      + '<span class="task" title="' + escapeHtml(e.task) + '">' + escapeHtml(e.task) + "</span>"
+      + '<span class="txcell">' + tx + "</span>"
+      + '<span class="when" title="' + escapeHtml(e.ts) + '">' + ago(e.ts) + "</span></div>";
+  }).join("");
+}
+
+async function copyAddr() {
+  if (!account) return;
+  try {
+    await navigator.clipboard.writeText(account);
+    $("addr").textContent = "copied";
+    setTimeout(function () { $("addr").textContent = short(account); }, 1400);
+  } catch (e) { /* clipboard blocked */ }
+}
+
+async function fund() {
+  await copyAddr();
+  window.open("https://faucet.circle.com/", "_blank", "noopener");
+}
+
+// ---------- per-call cap ----------
+// One number, owned by the server. The field shows it, POSTing changes it for
+// every path at once (Buy button, assistant, direct call, CLI), and the reply is
+// what gets rendered back — so the UI can never show a limit the guard is not
+// actually using.
+let ENV_DEFAULT_USD = null;
+let CURRENT_LIMIT_USD = null;
+let SAVING_LIMIT = false;
+
+function showLimit(usd, source, envDefault) {
+  if (envDefault != null) ENV_DEFAULT_USD = envDefault;
+  CURRENT_LIMIT_USD = usd;
+  const el = $("shop-limit");
+  // Do not fight the user mid-edit.
+  if (document.activeElement !== el) el.value = String(usd);
+  $("limit").textContent = money(usd);
+  // Until /api/agent has answered we do not know the .env default, so we cannot
+  // say where the number came from. Better blank than wrong.
+  if (source) $("limit-src").textContent = source === "override" ? "dashboard" : ".env";
+  const note = $("limit-note");
+  if (source === "override" && ENV_DEFAULT_USD != null) {
+    note.className = "limitnote";
+    note.innerHTML = 'Cap is ' + money(usd) + ' — <button class="linkbtn" onclick="resetLimit()">reset to '
+      + money(ENV_DEFAULT_USD) + "</button>";
+  } else {
+    note.className = "limitnote";
+    note.textContent = "";
+  }
+}
+
+async function saveLimit() {
+  const el = $("shop-limit");
+  const raw = el.value.trim();
+  const note = $("limit-note");
+  // Disabling a focused input fires blur, which would call this again.
+  if (SAVING_LIMIT) return;
+  // Tabbing through an unchanged field should not write anything. An empty box
+  // is not "no change" — it means "clear the override".
+  if (raw !== "" && Number(raw) === CURRENT_LIMIT_USD) return;
+  SAVING_LIMIT = true;
+  el.disabled = true;
+  try {
+    const r = await fetch("/api/limit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Run-Token": RUN_TOKEN },
+      body: JSON.stringify({ maxPerTxUsd: raw }),
+    });
+    const j = await r.json();
+    if (!r.ok || !j.ok) {
+      el.classList.add("invalid");
+      note.className = "limitnote bad";
+      note.textContent = j.error || "Could not set the cap.";
+      return;
+    }
+    el.classList.remove("invalid");
+    showLimit(j.maxPerTxUsd, j.source, j.envDefaultUsd);
+    note.className = "limitnote ok";
+    note.textContent = "Cap is now " + money(j.maxPerTxUsd) + " per call.";
+    setTimeout(function () { showLimit(j.maxPerTxUsd, j.source, j.envDefaultUsd); }, 2200);
+  } catch (e) {
+    note.className = "limitnote bad";
+    note.textContent = "Could not reach the server: " + e.message;
+  } finally {
+    el.disabled = false;
+    SAVING_LIMIT = false;
+  }
+}
+
+/** Clear the override and go back to whatever .env says. */
+async function resetLimit() {
+  $("shop-limit").value = "";
+  await saveLimit();
+}
+
+// ---------- marketplace (real x402 registry) ----------
+async function refreshShop() {
+  const box = $("shop");
+  box.innerHTML = '<span class="muted">Loading listings…</span>';
+  const q = ($("shop-q") && $("shop-q").value.trim()) || "";
+  const max = ($("shop-max") && $("shop-max").value.trim()) || "";
+  const sort = ($("shop-sort") && $("shop-sort").value) || "";
+  const qs = new URLSearchParams({ limit: "24" });
+  if (q) qs.set("q", q);
+  if (max) qs.set("maxUsd", max);
+  if (sort) qs.set("sort", sort);
+  try {
+    const j = await (await fetch("/api/market?" + qs.toString())).json();
+    if (!j.ok) {
+      box.innerHTML = '<span class="muted">' + escapeHtml(j.error || "Registry unavailable.") + "</span>";
+      return;
+    }
+    $("shop-sub").textContent = j.total + " listings" + (q ? ' matching "' + q + '"' : "");
+    if (!j.items.length) {
+      box.innerHTML = '<span class="muted">Nothing matched. Try a broader search.</span>';
+      return;
+    }
+    box.innerHTML = j.items.map(renderListing).join("");
+    showCacheAge(j.cache);
+  } catch (e) {
+    box.innerHTML = '<span class="muted">Could not reach the registry.</span>';
+  }
+}
+
+/** Deterministic colour per provider, so the same seller always looks the same. */
+function monoColor(seed) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return "hsl(" + (h % 360) + " 55% 45%)";
+}
+
+function monogram(l) {
+  const letter = (l.name || l.provider || "?").replace(/[^A-Za-z0-9]/g, "").charAt(0).toUpperCase() || "?";
+  return '<div class="pmono" style="background:' + monoColor(l.provider || l.name) + '">' + escapeHtml(letter) + "</div>";
+}
+
+function renderListing(l) {
+  // Roughly a quarter of sellers supply an image; the rest get a monogram in a
+  // stable colour, and a broken image falls back to that same monogram.
+  const thumb = l.iconUrl
+    ? '<img class="pthumb" src="' + escapeHtml(l.iconUrl) + '" alt="" loading="lazy" referrerpolicy="no-referrer"'
+      + ' onerror="this.outerHTML=' + escapeHtml(JSON.stringify(monogram(l))) + '" />'
+    : monogram(l);
+
+  const chips = (l.tags || []).slice(0, 3)
+    .map(function (t) { return '<span class="chip">' + escapeHtml(t) + "</span>"; }).join("");
+
+  return '<div class="pcard">'
+    + '<div class="pcard-top">' + thumb
+    + '<div class="pcard-id"><div class="pcard-name">' + escapeHtml(l.name) + "</div>"
+    + '<div class="pcard-provider">' + escapeHtml(l.provider) + "</div></div></div>"
+    + '<p class="pcard-desc">' + escapeHtml(l.description || "") + "</p>"
+    + '<div class="chips">' + chips + '<span class="net-badge">' + escapeHtml(l.networkLabel) + "</span></div>"
+    + '<div class="pcard-foot"><span class="pcard-price">' + money(l.priceUsd) + "</span>"
+    + '<button class="primary" id="buy-' + l.id + '" onclick="buyListing(' + escapeHtml(JSON.stringify(l.id)) + ')">Buy</button></div>'
+    + '<p class="pcard-note" id="note-' + l.id + '"></p></div>';
+}
+
+/** A person clicked Buy at a price they can see, so no limit applies. */
+async function buyListing(listingId) {
+  const btn = $("buy-" + listingId);
+  const note = $("note-" + listingId);
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.innerHTML = '<span class="spin"></span>';
+  note.className = "pcard-note";
+  note.textContent = "";
+  try {
+    const r = await fetch("/api/buy-listing", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Run-Token": RUN_TOKEN },
+      body: JSON.stringify({ listingId }),
+    });
+    const j = await r.json();
+    if (!r.ok || !j.ok) {
+      note.className = "pcard-note bad";
+      note.textContent = j.error || ("Failed (HTTP " + r.status + ")");
+    } else {
+      note.className = "pcard-note good";
+      note.textContent = "Bought for " + money(j.paidUsd) + ".";
+      refreshBuys(); refresh(); refreshChart(); refreshShop();
+    }
+  } catch (e) {
+    note.className = "pcard-note bad";
+    note.textContent = "Request failed: " + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+}
+
+/** Force a refetch of the registry, ignoring the 5-minute cache. */
+async function refreshCatalog() {
+  const btn = $("cache-refresh");
+  btn.disabled = true;
+  const label = btn.innerHTML; // an icon, not text — keep the markup
+  btn.innerHTML = '<span class="spin"></span>';
+  try {
+    const j = await (await fetch("/api/market/refresh", {
+      method: "POST",
+      headers: { "X-Run-Token": RUN_TOKEN },
+    })).json();
+    if (j.ok) { showCacheAge(j.cache); refreshShop(); }
+  } catch (e) {
+    /* leave the list as it is */
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = label;
+  }
+}
+
+function showCacheAge(cache) {
+  if (!cache || cache.ageMs == null) return;
+  const mins = Math.floor(cache.ageMs / 60000);
+  $("cache-age").textContent = "cached " + (mins < 1 ? "just now" : mins + "m ago");
+}
+
+// ---------- assistant ----------
+async function runShop() {
+  const btn = $("shop-run");
+  const prompt = $("shop-prompt").value.trim();
+  if (!prompt) { setErr("shop-err", "Say what you are looking for."); return; }
+  setErr("shop-err", "");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>Looking';
+  $("shop-results").innerHTML = "";
+
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), CLIENT_TIMEOUT_MS * 3);
+  try {
+    const r = await fetch("/api/shop", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Run-Token": RUN_TOKEN },
+      body: JSON.stringify({ prompt, autoBuyUnderUsd: $("shop-auto").value.trim() || "0" }),
+      signal: ctl.signal,
+    });
+    const j = await r.json();
+    if (!r.ok && j.field) { setErr("shop-err", j.error); return; }
+    if (j.error) setErr("shop-err", j.error);
+    renderMatches(j);
+    refresh(); refreshChart(); refreshBuys(); refreshShop();
+  } catch (e) {
+    setErr("shop-err", e.name === "AbortError" ? "Timed out." : "Request failed: " + e.message);
+  } finally {
+    clearTimeout(timer);
+    btn.disabled = false;
+    btn.textContent = "Find products";
+  }
+}
+
+function renderMatches(j) {
+  const box = $("shop-results");
+  if (!j.matches || !j.matches.length) {
+    box.innerHTML = '<p class="shop-note">' + escapeHtml(j.note || "Nothing matched that.") + "</p>";
+    return;
+  }
+  const rows = j.matches.map(function (m) {
+    const tag = m.blocked
+      ? '<span class="tag2 no">unavailable</span>'
+      : m.autoBought
+        ? '<span class="tag2 auto">bought</span>'
+        : '<span class="tag2 sug">suggested</span>';
+    const thumb = m.iconUrl
+      ? '<img class="pthumb" style="width:30px;height:30px" src="' + escapeHtml(m.iconUrl) + '" alt="" loading="lazy" referrerpolicy="no-referrer" />'
+      : "";
+    const action = m.autoBought
+      ? '<span class="match-params">in Purchased</span>'
+      : m.blocked
+        ? '<span class="match-params">' + escapeHtml(String(m.blocked).slice(0, 90)) + "</span>"
+        : '<button class="primary" id="mbuy-' + m.listingId + '" onclick="buyMatch(' + escapeHtml(JSON.stringify(m.listingId)) + ')">Buy ' + money(m.priceUsd) + "</button>";
+    return '<div class="match"><div class="match-head">' + thumb
+      + '<span class="match-name">' + escapeHtml(m.name) + "</span>"
+      + '<span class="pcard-price">' + money(m.priceUsd) + "</span>" + tag + "</div>"
+      + '<p class="match-why">' + escapeHtml(String(m.description || "").slice(0, 160)) + "</p>"
+      + '<div class="match-act">' + action + '<span class="pcard-note" id="mnote-' + m.listingId + '"></span></div></div>';
+  });
+  box.innerHTML = rows.join("") + '<p class="shop-note">' + escapeHtml(j.note || "") + "</p>";
+}
+
+/** Buy a suggested match. This is a person clicking, so no limit applies. */
+async function buyMatch(listingId) {
+  const btn = $("mbuy-" + listingId);
+  const note = $("mnote-" + listingId);
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.innerHTML = '<span class="spin"></span>';
+  note.className = "pcard-note";
+  note.textContent = "";
+  try {
+    const r = await fetch("/api/buy-listing", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Run-Token": RUN_TOKEN },
+      body: JSON.stringify({ listingId }),
+    });
+    const j = await r.json();
+    if (!r.ok || !j.ok) {
+      note.className = "pcard-note bad";
+      note.textContent = j.error || "Purchase failed";
+    } else {
+      note.className = "pcard-note good";
+      note.textContent = "Bought for " + money(j.paidUsd) + ".";
+      btn.style.display = "none";
+      refreshBuys(); refresh(); refreshChart(); refreshShop();
+    }
+  } catch (e) {
+    note.className = "pcard-note bad";
+    note.textContent = "Request failed: " + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+}
+
+// ---------- library (purchased goods) ----------
+// Held here so the filter box can re-render without refetching.
+let OWNED = [];
+
+async function refreshBuys() {
+  try {
+    const j = await (await fetch("/api/purchases")).json();
+    if (!j.ok) return;
+    OWNED = j.items || [];
+    $("buys-sub").textContent = j.count
+      ? j.count + (j.count === 1 ? " item · " : " items · ") + money(j.totalUsd) + " spent"
+      : " ";
+    $("s-items").textContent = String(j.count || 0);
+    renderOwned();
+  } catch (e) {
+    $("buys").innerHTML = '<span class="muted">Could not load purchases.</span>';
+  }
+}
+
+/**
+ * A purchase and a listing are the same thing to the eye, so they get the same
+ * card. Everything drawn here comes from the snapshot taken at the moment of
+ * sale (data.listing) — the registry is not consulted, so an item you own keeps
+ * looking the way it did when you bought it even after the seller changes or
+ * delists it.
+ */
+function ownedFacts(it) {
+  const L = (it.data && it.data.listing) || null;
+  return {
+    name: (L && L.name) || it.productId || "Unnamed",
+    provider: (L && L.provider) || "local service",
+    description: (L && L.description) || it.productName || "",
+    tags: (L && L.tags) || [],
+    network: (L && L.network) || "",
+    iconUrl: (L && L.iconUrl) || null,
+  };
+}
+
+function renderOwned() {
+  const box = $("buys");
+  const q = (($("buys-q") && $("buys-q").value) || "").trim().toLowerCase();
+  const items = !q ? OWNED : OWNED.filter(function (it) {
+    const f = ownedFacts(it);
+    return (f.name + " " + f.provider + " " + f.description + " " + f.tags.join(" ")).toLowerCase().indexOf(q) >= 0;
+  });
+  if (!items.length) {
+    box.innerHTML = '<span class="muted">' + (OWNED.length ? "Nothing you own matches that." : "Nothing bought yet.") + "</span>";
+    return;
+  }
+  box.innerHTML = items.map(renderPurchase).join("");
+}
+
+function renderPurchase(it) {
+  const f = ownedFacts(it);
+  const thumb = f.iconUrl
+    ? '<img class="pthumb" src="' + escapeHtml(f.iconUrl) + '" alt="" loading="lazy" referrerpolicy="no-referrer"'
+      + ' onerror="this.outerHTML=' + escapeHtml(JSON.stringify(monogram(f))) + '" />'
+    : monogram(f);
+
+  const chips = f.tags.slice(0, 3)
+    .map(function (t) { return '<span class="chip">' + escapeHtml(t) + "</span>"; }).join("")
+    + (f.network ? '<span class="net-badge">' + escapeHtml(f.network) + "</span>" : "");
+
+  const href = txHref(it.txHash);
+  const tx = href ? '<a class="tx" href="' + href + '" target="_blank" rel="noopener">tx</a>' : "";
+
+  return '<div class="pcard owned">'
+    + '<div class="pcard-top">' + thumb
+    + '<div class="pcard-id"><div class="pcard-name">' + escapeHtml(f.name) + "</div>"
+    + '<div class="pcard-provider">' + escapeHtml(f.provider) + "</div></div></div>"
+    + '<p class="pcard-desc">' + escapeHtml(f.description) + "</p>"
+    + '<div class="chips">' + chips + "</div>"
+    + '<div class="owned-foot"><span class="owned-paid">' + money(it.usd) + "</span>"
+    + '<span class="owned-when">' + ago(it.ts) + "</span>" + tx
+    + '<button class="tiny push" onclick="toggleData(' + escapeHtml(JSON.stringify(it.id)) + ')">Data</button></div>'
+    + '<pre class="pdata" id="pd-' + escapeHtml(it.id) + '" hidden>' + escapeHtml(JSON.stringify(it.data, null, 2)) + "</pre></div>";
+}
+
+function toggleData(id) {
+  const el = $("pd-" + id);
+  if (el) el.hidden = !el.hidden;
+}
+
+// ---------- direct call ----------
+const STEP_TITLE = { quote: "Quote", check: "Limit check", pay: "Payment", retry: "Retry", result: "Result" };
+
+function renderFlow(steps, running) {
+  const flow = $("flow");
+  flow.className = "flow";
+  const rows = (steps || []).map(function (s) {
+    let cls = "ok", glyph = "✓";
+    if (s.step === "retry") { cls = "wait"; glyph = "↻"; }
+    else if (s.ok === false) { cls = "no"; glyph = "✕"; }
+    let detail = escapeHtml(s.note || "");
+    const href = s.step === "pay" ? txHref(s.txHash) : null;
+    if (href) {
+      detail += ' · <a class="tx" href="' + href + '" target="_blank" rel="noopener">'
+        + escapeHtml(String(s.txHash).slice(0, 10)) + "…</a>";
+    }
+    return '<div class="stepline"><div class="rail"><div class="bead ' + cls + '">' + glyph + '</div><div class="stem"></div></div>'
+      + '<div class="stepbody"><div class="t">' + (STEP_TITLE[s.step] || s.step) + '</div>'
+      + '<div class="d ' + (s.ok === false ? "err" : "") + '">' + detail + "</div></div></div>";
+  });
+  if (running) {
+    rows.push('<div class="stepline"><div class="rail"><div class="bead run">•</div><div class="stem"></div></div>'
+      + '<div class="stepbody"><div class="t">Working…</div><div class="d">Signing and settling on Base Sepolia</div></div></div>');
+  }
+  flow.innerHTML = rows.join("");
+}
+
+function setPriceError(msg) {
+  const input = $("price-in");
+  if (msg) input.classList.add("invalid");
+  else input.classList.remove("invalid");
+  setErr("price-err", msg);
+}
+
+async function send() {
+  const btn = $("send");
+  const task = $("task").value.trim() || "market-signal";
+  const price = $("price-in").value.trim(); // empty = the seller's default
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>Paying…';
+  setPriceError("");
+  renderFlow([], true);
+
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), CLIENT_TIMEOUT_MS);
+  try {
+    const r = await fetch("/api/pay", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Run-Token": RUN_TOKEN },
+      body: JSON.stringify({ task, price }),
+      signal: ctl.signal,
+    });
+    const j = await r.json();
+    if (!r.ok && j.field === "price") {
+      setPriceError(j.error);
+      $("flow").className = "flow empty";
+      $("price-in").focus();
+      return;
+    }
+    if (!r.ok && !j.steps) {
+      renderFlow([{ step: "result", ok: false, note: j.error || ("HTTP " + r.status) }], false);
+      return;
+    }
+    renderFlow(j.steps || [], false);
+    if (j.balanceUsd !== undefined) {
+      $("bal").textContent = Number(j.balanceUsd).toFixed(2);
+      $("balchip-v").textContent = Number(j.balanceUsd).toFixed(2);
+    }
+    refresh(); refreshChart();
+  } catch (e) {
+    // An abort says we stopped waiting — NOT that nothing happened. The payment
+    // may still settle server-side, so point at the record rather than claiming
+    // it failed.
+    const timedOut = e.name === "AbortError";
+    renderFlow([{
+      step: "result",
+      ok: false,
+      note: timedOut
+        ? "Timed out after " + Math.round(CLIENT_TIMEOUT_MS / 1000) + "s. It may still have settled — check Payments."
+        : "Request failed: " + e.message,
+    }], false);
+    if (timedOut) { refresh(); refreshChart(); }
+  } finally {
+    clearTimeout(timer);
+    btn.disabled = false;
+    btn.textContent = "Send request";
+  }
+}
+
+// ---------- spending chart ----------
+// Single series, so one color for every bar and no legend — the card title says
+// what is plotted. Colors are validated against both surfaces (see --bar).
+function setRange(r) {
+  CHART_RANGE = r;
+  document.querySelectorAll("#rangebar button").forEach(function (b) {
+    b.setAttribute("aria-pressed", String(b.dataset.range === r));
+  });
+  refreshChart();
+}
+
+function niceCeil(v) {
+  if (!(v > 0)) return 1;
+  const exp = Math.pow(10, Math.floor(Math.log10(v)));
+  const f = v / exp;
+  const nf = f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10;
+  return nf * exp;
+}
+
+// Bucket keys are "2026-09-12" (daily) or "2026-09-12T14" (hourly), both UTC.
+function bucketLabel(key, unit) {
+  if (unit === "hour") {
+    return new Date(key + ":00:00Z").toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  }
+  return new Date(key + "T00:00:00Z").toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+}
+
+async function refreshChart() {
+  const wrap = $("chartwrap"), sub = $("spend-sub");
+  wrap.classList.add("stale"); // hold the previous render rather than flashing
+  try {
+    const j = await (await fetch("/api/spending?range=" + encodeURIComponent(CHART_RANGE))).json();
+    if (!j.ok) { sub.textContent = ""; return; }
+    sub.textContent = j.rangeLabel + " · " + money(j.totalUsd) + " · " + j.calls + (j.calls === 1 ? " call" : " calls");
+
+    // One bar is not a chart. Below two active buckets, say the number instead.
+    if (j.bucketsWithSpend < 2) {
+      const where = j.peakDate ? bucketLabel(j.peakDate, j.unit) : "";
+      wrap.innerHTML = '<div class="tip" id="tip"></div><p class="emptychart">'
+        + (j.calls === 0
+            ? "No payments in this period. Try a wider range."
+            : "All " + money(j.totalUsd) + " of it at " + where + ". Try a narrower range to see the shape.")
+        + "</p>";
+      return;
+    }
+    drawChart(j);
+  } catch (e) {
+    sub.textContent = "";
+  } finally {
+    wrap.classList.remove("stale");
+  }
+}
+
+function drawChart(j) {
+  const W = 560, H = 182, padL = 46, padR = 10, padT = 16, padB = 26;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const data = j.series, unit = j.unit;
+  const max = niceCeil(Math.max.apply(null, data.map(function (d) { return d.usd; })));
+  const y = function (v) { return padT + plotH - (v / max) * plotH; };
+  const band = plotW / data.length;
+  const barW = Math.min(24, Math.max(4, band - 2)); // 2px surface gap between neighbours
+
+  const grid = [0, max / 2, max].map(function (t) {
+    const ty = y(t);
+    return '<line class="gridline" x1="' + padL + '" y1="' + ty + '" x2="' + (padL + plotW) + '" y2="' + ty + '" />'
+      + '<text class="axtext" x="' + (padL - 8) + '" y="' + (ty + 3.5) + '" text-anchor="end">' + money(t) + "</text>";
+  }).join("");
+
+  // Label a few dates only; one per bar collides at this width.
+  const n = data.length;
+  const labelAt = [0, Math.round((n - 1) / 3), Math.round((2 * (n - 1)) / 3), n - 1];
+  const xlabels = data.map(function (d, i) {
+    return labelAt.indexOf(i) >= 0
+      ? '<text class="axtext" x="' + (padL + i * band + band / 2) + '" y="' + (H - 8) + '" text-anchor="middle">'
+        + bucketLabel(d.date, unit) + "</text>"
+      : "";
+  }).join("");
+
+  let peakIdx = 0;
+  for (let i = 1; i < data.length; i++) if (data[i].usd > data[peakIdx].usd) peakIdx = i;
+
+  const bars = data.map(function (d, i) {
+    const bx = padL + i * band + (band - barW) / 2;
+    const by = y(d.usd), bh = padT + plotH - by;
+    const r = Math.min(4, barW / 2, bh); // rounded data-end, square at the baseline
+    const shape = bh <= 0 ? "" : '<path class="bar" d="M' + bx + " " + (padT + plotH)
+      + " L" + bx + " " + (by + r)
+      + " Q" + bx + " " + by + " " + (bx + r) + " " + by
+      + " L" + (bx + barW - r) + " " + by
+      + " Q" + (bx + barW) + " " + by + " " + (bx + barW) + " " + (by + r)
+      + " L" + (bx + barW) + " " + (padT + plotH) + ' Z" />';
+    // Hit target is the whole band, not the bar, so thin bars stay hoverable.
+    const hit = '<rect class="band" x="' + (padL + i * band) + '" y="' + padT + '" width="' + band + '" height="' + plotH + '"'
+      + ' tabindex="0" data-i="' + i + '"><title>' + bucketLabel(d.date, unit) + ": " + money(d.usd)
+      + " over " + d.count + (d.count === 1 ? " call" : " calls") + "</title></rect>";
+    return hit + shape;
+  }).join("");
+
+  // Label the extreme only — a number on every bar is unreadable.
+  const pd = data[peakIdx], py = y(pd.usd);
+  const peakLabel = pd.usd > 0 && py > padT + 12
+    ? '<text class="peaklbl" x="' + (padL + peakIdx * band + band / 2) + '" y="' + (py - 6) + '" text-anchor="middle">'
+      + money(pd.usd) + "</text>"
+    : "";
+
+  const svg = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Spending by ' + unit
+    + ". " + j.rangeLabel + ". Total " + money(j.totalUsd) + '.">'
+    + grid + bars + peakLabel + xlabels
+    + '<line class="gridline" x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (padL + plotW) + '" y2="' + (padT + plotH) + '" /></svg>';
+
+  const wrap = $("chartwrap");
+  wrap.innerHTML = '<div class="tip" id="tip"></div>' + svg;
+
+  const tip = $("tip");
+  wrap.querySelectorAll(".band").forEach(function (el) {
+    const show = function () {
+      const i = Number(el.dataset.i), d = data[i];
+      tip.textContent = bucketLabel(d.date, unit) + " · " + money(d.usd) + " · "
+        + d.count + (d.count === 1 ? " call" : " calls");
+      tip.style.left = ((padL + i * band + band / 2) / W) * 100 + "%";
+      tip.style.top = (Math.max(y(d.usd) - 8, padT) / H) * 100 + "%";
+      tip.classList.add("on");
+    };
+    const hide = function () { tip.classList.remove("on"); };
+    el.addEventListener("mouseenter", show);
+    el.addEventListener("mouseleave", hide);
+    el.addEventListener("focus", show);
+    el.addEventListener("blur", hide);
+  });
+}
+
+// ---------- startup ----------
+$("task").addEventListener("keydown", function (e) { if (e.key === "Enter") send(); });
+$("price-in").addEventListener("keydown", function (e) { if (e.key === "Enter") send(); });
+$("price-in").addEventListener("input", function () { setPriceError(""); });
+$("shop-prompt").addEventListener("input", function () { setErr("shop-err", ""); });
+$("shop-q").addEventListener("keydown", function (e) { if (e.key === "Enter") refreshShop(); });
+$("shop-max").addEventListener("keydown", function (e) { if (e.key === "Enter") refreshShop(); });
+$("shop-sort").addEventListener("change", refreshShop);
+// Commit on Enter or on leaving the field, not on every keystroke — a cap that
+// changed while you were still typing "0.5" would briefly be "0." and then "0.5".
+$("shop-limit").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); saveLimit(); } });
+$("shop-limit").addEventListener("blur", saveLimit);
+$("shop-limit").addEventListener("input", function () { $("shop-limit").classList.remove("invalid"); });
+// The library is already in memory, so it filters as you type — no round trip.
+$("buys-q").addEventListener("input", renderOwned);
+
+const wantTab = (location.hash || "").replace("#", "");
+showTab(TABS.indexOf(wantTab) >= 0 ? wantTab : "shop");
+
+loadConfig();
+refresh();
+refreshShop();
+refreshBuys();
+refreshChart();
+setInterval(function () { if (!document.hidden) { refresh(); refreshBuys(); } }, 30000);
+</script>
+</body>
+</html>
